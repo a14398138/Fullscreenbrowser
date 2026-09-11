@@ -27,7 +27,7 @@ jobs:
         run: cp app/build/outputs/apk/release/app-release.apk FullscreenBrowser.apk
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.2
-          name: Fullscreen Browser v1.0.2
+          tag_name: v1.0.3
+          name: Fullscreen Browser v1.0.3
           files: FullscreenBrowser.apk
           generate_release_notes: true
