@@ -15,11 +15,11 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 
 public class MainActivity extends Activity {
+    private static final String DEFAULT_HOME_URL = "https://www.google.com";
     private WebView webView;
 
     @Override
@@ -63,8 +63,10 @@ public class MainActivity extends Activity {
         if (state != null) {
             webView.restoreState(state);
         }
+
         if (!loadFromIntent(getIntent()) && webView.getUrl() == null) {
-            webView.loadUrl("about:blank");
+            // Default to Google search if opened directly with no URL
+            webView.loadUrl(DEFAULT_HOME_URL);
         }
     }
 
@@ -72,7 +74,9 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        loadFromIntent(intent);
+        if (!loadFromIntent(intent) && webView.getUrl() == null) {
+            webView.loadUrl(DEFAULT_HOME_URL);
+        }
         enterImmersiveMode();
     }
 
@@ -86,19 +90,22 @@ public class MainActivity extends Activity {
     private String findUrlInIntent(Intent intent) {
         if (intent == null) return null;
 
+        // 1. Direct ACTION_VIEW data
         if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
             String dataUrl = intent.getData().toString();
             if (isWebUrl(dataUrl)) return dataUrl;
         }
 
+        // 2. Extra Text
         String url = extractWebUrl(intent.getCharSequenceExtra(Intent.EXTRA_TEXT));
         if (url != null) return url;
 
+        // 3. Process Text
         url = extractWebUrl(intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT));
         if (url != null) return url;
 
-        ArrayList<CharSequence> texts =
-                intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT);
+        // 4. Array of texts
+        ArrayList<CharSequence> texts = intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT);
         if (texts != null) {
             for (CharSequence text : texts) {
                 url = extractWebUrl(text);
@@ -106,6 +113,7 @@ public class MainActivity extends Activity {
             }
         }
 
+        // 5. ClipData
         ClipData clipData = intent.getClipData();
         if (clipData != null) {
             for (int i = 0; i < clipData.getItemCount(); i++) {
@@ -117,16 +125,34 @@ public class MainActivity extends Activity {
                 }
             }
         }
+
         return null;
     }
 
     private String extractWebUrl(CharSequence text) {
         if (text == null) return null;
+        String textStr = text.toString().trim();
+
+        // Check if the whole string is an http/https URL
+        if (isWebUrl(textStr)) {
+            return textStr;
+        }
+
+        // Search for URL pattern within shared text (e.g. from social apps)
         Matcher matcher = Patterns.WEB_URL.matcher(text);
         while (matcher.find()) {
             String candidate = matcher.group();
-            if (isWebUrl(candidate)) return candidate;
+            if (isWebUrl(candidate)) {
+                return candidate;
+            } else if (candidate.startsWith("www.") || candidate.startsWith("http")) {
+                // If scheme was missing or lowercase issue
+                if (!candidate.startsWith("http://") && !candidate.startsWith("https://")) {
+                    return "https://" + candidate;
+                }
+                return candidate;
+            }
         }
+
         return null;
     }
 
@@ -137,8 +163,11 @@ public class MainActivity extends Activity {
     }
 
     private void navigateBack() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else finish();
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            finish();
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -149,7 +178,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        webView.saveState(outState);
+        if (webView != null) {
+            webView.saveState(outState);
+        }
         super.onSaveInstanceState(outState);
     }
 

@@ -10,21 +10,26 @@ permissions:
 
 jobs:
   release:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Release v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Release v') || startsWith(github.event.head_commit.message, 'fix:')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Build installable APK
         run: gradle :app:assembleRelease --no-daemon
+
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk FullscreenBrowser.apk
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.3

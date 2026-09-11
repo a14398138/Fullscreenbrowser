@@ -8,8 +8,8 @@ android {
         applicationId 'com.a14398138.fullscreenbrowser'
         minSdk 23
         targetSdk 35
-        versionCode 3
-        versionName '1.0.2'
+        versionCode 4
+        versionName '1.0.3'
     }
 
     buildTypes {
