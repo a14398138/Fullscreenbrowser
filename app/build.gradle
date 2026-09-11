@@ -8,13 +8,12 @@ android {
         applicationId 'com.a14398138.fullscreenbrowser'
         minSdk 23
         targetSdk 35
-        versionCode 2
-        versionName '1.0.1'
+        versionCode 3
+        versionName '1.0.2'
     }
 
     buildTypes {
         release {
-            // Produces an immediately installable APK. Replace with a private release key for store distribution.
             signingConfig signingConfigs.debug
             minifyEnabled false
         }
