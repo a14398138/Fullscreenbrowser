@@ -1,0 +1,22 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.a14398138.fullscreenbrowser'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.a14398138.fullscreenbrowser'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            // Produces an immediately installable APK. Replace with a private release key for store distribution.
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+    }
+}
