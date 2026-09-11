@@ -8,8 +8,7 @@
         android:label="Fullscreen Browser"
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.FullscreenBrowser"
-        android:usesCleartextTraffic="true"
-        android:enableOnBackInvokedCallback="true">
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"
