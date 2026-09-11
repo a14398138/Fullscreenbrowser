@@ -1,9 +1,11 @@
 package com.a14398138.fullscreenbrowser;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Patterns;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -12,6 +14,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import java.util.regex.Matcher;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -42,9 +46,9 @@ public class MainActivity extends Activity {
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme();
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                    return false; // Keep every web link in this WebView.
+                    return false;
                 }
-                return true; // Do not leak navigation to another/default browser.
+                return true;
             }
 
             @Override
@@ -62,11 +66,49 @@ public class MainActivity extends Activity {
         }
 
         if (state == null) {
-            Uri incoming = getIntent().getData();
-            webView.loadUrl(incoming != null ? incoming.toString() : "about:blank");
+            loadFromIntent(getIntent());
         } else {
             webView.restoreState(state);
         }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        loadFromIntent(intent);
+        enterImmersiveMode();
+    }
+
+    private void loadFromIntent(Intent intent) {
+        String url = null;
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            url = intent.getData().toString();
+        } else if (Intent.ACTION_SEND.equals(intent.getAction())
+                && "text/plain".equals(intent.getType())) {
+            CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+            url = extractWebUrl(sharedText);
+        }
+
+        if (url != null) {
+            webView.loadUrl(url);
+        } else if (webView.getUrl() == null) {
+            webView.loadUrl("about:blank");
+        }
+    }
+
+    private String extractWebUrl(CharSequence text) {
+        if (text == null) return null;
+        Matcher matcher = Patterns.WEB_URL.matcher(text);
+        while (matcher.find()) {
+            String candidate = matcher.group();
+            Uri uri = Uri.parse(candidate);
+            String scheme = uri.getScheme();
+            if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private void navigateBack() {
