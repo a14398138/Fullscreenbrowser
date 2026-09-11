@@ -1,6 +1,7 @@
 package com.a14398138.fullscreenbrowser;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -15,6 +16,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 
 public class MainActivity extends Activity {
@@ -43,19 +45,12 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri uri = request.getUrl();
-                String scheme = uri.getScheme();
-                if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                    return false;
-                }
-                return true;
+                return !isWebUrl(request.getUrl().toString());
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                Uri uri = Uri.parse(url);
-                String scheme = uri.getScheme();
-                return !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
+                return !isWebUrl(url);
             }
         });
 
@@ -65,10 +60,11 @@ public class MainActivity extends Activity {
                     this::navigateBack);
         }
 
-        if (state == null) {
-            loadFromIntent(getIntent());
-        } else {
+        if (state != null) {
             webView.restoreState(state);
+        }
+        if (!loadFromIntent(getIntent()) && webView.getUrl() == null) {
+            webView.loadUrl("about:blank");
         }
     }
 
@@ -80,21 +76,48 @@ public class MainActivity extends Activity {
         enterImmersiveMode();
     }
 
-    private void loadFromIntent(Intent intent) {
-        String url = null;
+    private boolean loadFromIntent(Intent intent) {
+        String url = findUrlInIntent(intent);
+        if (url == null) return false;
+        webView.loadUrl(url);
+        return true;
+    }
+
+    private String findUrlInIntent(Intent intent) {
+        if (intent == null) return null;
+
         if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
-            url = intent.getData().toString();
-        } else if (Intent.ACTION_SEND.equals(intent.getAction())
-                && "text/plain".equals(intent.getType())) {
-            CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-            url = extractWebUrl(sharedText);
+            String dataUrl = intent.getData().toString();
+            if (isWebUrl(dataUrl)) return dataUrl;
         }
 
-        if (url != null) {
-            webView.loadUrl(url);
-        } else if (webView.getUrl() == null) {
-            webView.loadUrl("about:blank");
+        String url = extractWebUrl(intent.getCharSequenceExtra(Intent.EXTRA_TEXT));
+        if (url != null) return url;
+
+        url = extractWebUrl(intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT));
+        if (url != null) return url;
+
+        ArrayList<CharSequence> texts =
+                intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT);
+        if (texts != null) {
+            for (CharSequence text : texts) {
+                url = extractWebUrl(text);
+                if (url != null) return url;
+            }
         }
+
+        ClipData clipData = intent.getClipData();
+        if (clipData != null) {
+            for (int i = 0; i < clipData.getItemCount(); i++) {
+                ClipData.Item item = clipData.getItemAt(i);
+                url = extractWebUrl(item.coerceToText(this));
+                if (url != null) return url;
+                if (item.getUri() != null && isWebUrl(item.getUri().toString())) {
+                    return item.getUri().toString();
+                }
+            }
+        }
+        return null;
     }
 
     private String extractWebUrl(CharSequence text) {
@@ -102,13 +125,15 @@ public class MainActivity extends Activity {
         Matcher matcher = Patterns.WEB_URL.matcher(text);
         while (matcher.find()) {
             String candidate = matcher.group();
-            Uri uri = Uri.parse(candidate);
-            String scheme = uri.getScheme();
-            if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                return candidate;
-            }
+            if (isWebUrl(candidate)) return candidate;
         }
         return null;
+    }
+
+    private boolean isWebUrl(String value) {
+        if (value == null) return false;
+        String scheme = Uri.parse(value).getScheme();
+        return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
     }
 
     private void navigateBack() {
