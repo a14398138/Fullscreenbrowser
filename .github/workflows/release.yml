@@ -2,7 +2,8 @@ name: Build and release APK
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -25,5 +26,7 @@ jobs:
         run: cp app/build/outputs/apk/release/app-release.apk FullscreenBrowser.apk
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.0
+          name: Fullscreen Browser v1.0.0
           files: FullscreenBrowser.apk
           generate_release_notes: true
